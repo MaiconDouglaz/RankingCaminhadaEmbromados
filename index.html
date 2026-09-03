@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ranking do Desafio</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #f0f4f8; color: #333; padding: 20px; }
+    .container { max-width: 1050px; margin: 0 auto; }
+    
+    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+    h1 { color: #2c3e50; font-weight: 800; }
+    
+    /* Botões de Backup */
+    .backup-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-backup { background: #34495e; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; transition: background 0.2s; }
+    .btn-backup:hover { background: #2c3e50; }
+    .btn-import { background: #27ae60; }
+    .btn-import:hover { background: #219150; }
+
+    h2 { text-align: left; margin-bottom: 25px; color: #2c3e50; font-weight: 800; margin-top: 40px; border-bottom: 2px solid #ddd; padding-bottom: 10px; display: inline-block; width: 100%; }
+
+    /* === Estilos do Ranking === */
+    .ranking-section { background: #fff; padding: 25px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); margin-bottom: 30px; }
+    .ranking-list { list-style: none; }
+    .ranking-item { display: flex; align-items: center; justify-content: space-between; padding: 18px 25px; background: #fff; border-radius: 12px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s ease; border: 1px solid #eee; }
+    .ranking-item:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); background: #fafafa; }
+    
+    /* Pódios */
+    .ranking-item.top-1 { border-left: 8px solid #f1c40f; background: #fffdf0; border-color: #f1c40f; }
+    .ranking-item.top-2 { border-left: 8px solid #bdc3c7; border-color: #bdc3c7; }
+    .ranking-item.top-3 { border-left: 8px solid #e67e22; border-color: #e67e22; }
+    
+    .rank-info { display: flex; align-items: center; gap: 20px; }
+    .pos { font-size: 1.5rem; font-weight: 800; width: 35px; color: #95a5a6; text-align: center; }
+    .ranking-item.top-1 .pos { color: #f1c40f; }
+
+    .avatar-mini { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .user-name { font-weight: 700; font-size: 1.2rem; color: #2c3e50; }
+    
+    .score-badge { background: #27ae60; color: #fff; padding: 10px 20px; border-radius: 30px; font-weight: 800; font-size: 1.2rem; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.2); }
+
+    .details-toggle { font-size: 0.9rem; color: #7f8c8d; margin-top: 4px; display: block; font-weight: 500;}
+    .hidden-details { display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.95rem; color: #555; line-height: 1.6; }
+    .ranking-item.active .hidden-details { display: block; }
+
+    /* === Grid de Participantes === */
+    .participants-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; }
+    .card { background: #fff; border-radius: 16px; padding: 25px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.06); border: 1px solid #eee; transition: box-shadow 0.3s; }
+    .card:hover { box-shadow: 0 12px 30px rgba(0,0,0,0.1); }
+    
+    .card .main-avatar { width: 110px; height: 110px; border-radius: 50%; margin-bottom: 15px; object-fit: cover; border: 4px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .card h3 { margin-bottom: 5px; color: #2c3e50; font-weight: 700; font-size: 1.4rem; }
+    .card .info-basic { font-size: 0.95rem; color: #7f8c8d; margin-bottom: 20px; font-weight: 500; }
+
+    /* Botões de Ação no Card */
+    .btn-action-group { display: flex; gap: 10px; margin-bottom: 20px; }
+    .btn-toggle { flex: 1; background: #3498db; color: #fff; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
+    .btn-edit { background: #95a5a6; color: #fff; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
+    .btn-toggle:hover { background: #2980b9; }
+    .btn-edit:hover { background: #7f8c8d; }
+
+    /* === Menus Ocultos (Collapsible) === */
+    .collapsible-menu { display: none; background: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid #e1e8ed; margin-bottom: 20px; text-align: left; animation: slideDown 0.3s ease-out; }
+    .collapsible-menu.show { display: block; }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .menu-title { font-size: 1rem; font-weight: 700; color: #34495e; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+
+    .form-group { margin-bottom: 12px; text-align: left; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; color: #34495e; }
+    .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 0.95rem; }
+    .form-group input[type="file"] { padding: 5px; background: #fff; border: 1px dashed #aaa; }
+    
+    .profile-pic-preview { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd; margin-top: 10px; display: none; }
+
+    .btn-save { width: 100%; background: #27ae60; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 8px; font-size: 1rem; transition: background 0.2s; }
+    .btn-save:hover { background: #219150; }
+
+    /* === Estatísticas === */
+    .stats-container { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; text-align: left; }
+    .total-meta { font-size: 0.95rem; color: #2c3e50; background: #eafaf1; padding: 10px; border-radius: 8px; border: 1px solid #d4efdf; margin-bottom: 15px;}
+    
+    .weekly-breakdown { background: #fcfcfc; padding: 15px; border-radius: 10px; border: 1px solid #eee; }
+    .weekly-breakdown h4 { font-size: 0.85rem; color: #7f8c8d; margin-bottom: 8px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+    .weekly-row { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 5px 0; border-bottom: 1px dashed #e5e5e5; color: #555; }
+    .weekly-row:last-child { border-bottom: none; }
+
+    .chart-box { height: 160px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header-bar">
+    <h1>Ranking do Desafio</h1>
+    <div class="backup-controls">
+      <button class="btn-backup" onclick="exportBackup()">📥 Exportar Backup</button>
+      <button class="btn-backup btn-import" onclick="document.getElementById('importFile').click()">📤 Importar Backup</button>
+      <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importBackup(this)">
+    </div>
+  </div>
+
+  <!-- Ranking Geral -->
+  <div class="ranking-section">
+    <ul class="ranking-list" id="rankingList"></ul>
+  </div>
+
+  <h2>Participantes & Registros Semanais</h2>
+
+  <!-- Grid com 6 Participantes -->
+  <div class="participants-grid" id="participantsGrid"></div>
+</div>
+
+<script>
+  const initialUsers = [
+    { id: 1, name: "Carlos Silva", age: 29, initialWeight: 85, img: "https://i.pravatar.cc/150?img=11", weeks: {} },
+    { id: 2, name: "Ana Souza", age: 25, initialWeight: 62, img: "https://i.pravatar.cc/150?img=5", weeks: {} },
+    { id: 3, name: "Lucas Lima", age: 31, initialWeight: 90, img: "https://i.pravatar.cc/150?img=12", weeks: {} },
+    { id: 4, name: "Mariana Costa", age: 27, initialWeight: 68, img: "https://i.pravatar.cc/150?img=9", weeks: {} },
+    { id: 5, name: "Pedro Rocha", age: 34, initialWeight: 78, img: "https://i.pravatar.cc/150?img=13", weeks: {} },
+    { id: 6, name: "Fernanda Alves", age: 22, initialWeight: 58, img: "https://i.pravatar.cc/150?img=20", weeks: {} }
+  ];
+
+  let users = JSON.parse(localStorage.getItem('challenge_users_db_v3')) || initialUsers;
+  let charts = {};
+
+  function calcPoints(km, mins) {
+    return (parseFloat(km) || 0) * 10 + (parseInt(mins) || 0);
+  }
+
+  function getUserTotals(user) {
+    let totalKm = 0;
+    let totalMins = 0;
+    
+    Object.values(user.weeks).forEach(w => {
+      totalKm += parseFloat(w.km) || 0;
+      totalMins += parseInt(w.mins) || 0;
+    });
+
+    const totalPoints = calcPoints(totalKm, totalMins);
+    const hours = Math.floor(totalMins / 60);
+    const remainingMins = totalMins % 60;
+
+    return { totalKm, totalMins, hours, remainingMins, totalPoints };
+  }
+
+  function renderRanking() {
+    const rankingList = document.getElementById('rankingList');
+    rankingList.innerHTML = '';
+
+    const sortedUsers = [...users].sort((a, b) => getUserTotals(b).totalPoints - getUserTotals(a).totalPoints);
+
+    sortedUsers.forEach((user, index) => {
+      const totals = getUserTotals(user);
+      const li = document.createElement('li');
+      li.className = `ranking-item ${index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : ''}`;
+      
+      li.onclick = () => li.classList.toggle('active');
+
+      li.innerHTML = `
+        <div class="rank-info">
+          <span class="pos">${index + 1}</span>
+          <img src="${user.img}" class="avatar-mini" alt="${user.name}">
+          <div>
+            <span class="user-name">${user.name}</span>
+            <span class="details-toggle">Ver detalhes</span>
+            <div class="hidden-details">
+              📏 Distância Total: <strong>${totals.totalKm.toFixed(1)} km</strong><br>
+              ⏱️ Tempo Total: <strong>${totals.hours}h ${totals.remainingMins}min</strong>
+            </div>
+          </div>
+        </div>
+        <div class="score-badge">${totals.totalPoints} <span style="font-size:0.8rem; font-weight:500;">pts</span></div>
+      `;
+      rankingList.appendChild(li);
+    });
+  }
+
+  function renderParticipants() {
+    const grid = document.getElementById('participantsGrid');
+    grid.innerHTML = '';
+
+    users.forEach(user => {
+      const totals = getUserTotals(user);
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const weekNumbers = Object.keys(user.weeks).map(Number);
+      const maxWeek = Math.max(4, ...weekNumbers, 0);
+
+      let weeklyHTML = '';
+      for (let w = 1; w <= maxWeek; w++) {
+        const weekData = user.weeks[w];
+        if (weekData && (weekData.km > 0 || weekData.mins > 0 || weekData.weight > 0)) {
+          const h = Math.floor((weekData.mins || 0) / 60);
+          const m = (weekData.mins || 0) % 60;
+          weeklyHTML += `
+            <div class="weekly-row">
+              <span>Semana ${w}:</span>
+              <strong>${(weekData.km || 0).toFixed(1)} km | ${h}h ${m}m | ${(weekData.weight || user.initialWeight).toFixed(1)} kg</strong>
+            </div>
+          `;
+        }
+      }
+      if (!weeklyHTML) weeklyHTML = '<div class="weekly-row" style="color:#aaa; justify-content:center;">Sem registros.</div>';
+
+      let optionsHTML = '';
+      for (let w = 1; w <= maxWeek; w++) {
+        optionsHTML += `<option value="${w}">Semana ${w}</option>`;
+      }
+
+      card.innerHTML = `
+        <img src="${user.img}" class="main-avatar" id="main-avatar-${user.id}" alt="${user.name}">
+        <h3>${user.name}</h3>
+        <div class="info-basic">${user.age} anos | Inicial: ${user.initialWeight} kg</div>
+
+        <div class="btn-action-group">
+          <button class="btn-toggle" onclick="toggleMenu('input-menu-${user.id}')">➕ Inserir Dados</button>
+          <button class="btn-edit" onclick="toggleMenu('edit-menu-${user.id}')">✏️ Perfil</button>
+        </div>
+
+        <!-- MENU OCULTO: Inserir Dados Semanais -->
+        <div class="collapsible-menu" id="input-menu-${user.id}">
+          <div class="menu-title">Registrar Progresso da Semana</div>
+          <div class="form-group">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+              <label style="margin:0;">Selecione a Semana:</label>
+              <button onclick="addNewWeek(${user.id})" style="background:#e74c3c; color:#fff; border:none; padding:3px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:bold;">+ Nova Semana</button>
+            </div>
+            <select id="week-select-${user.id}" onchange="loadWeekData(${user.id})">
+              ${optionsHTML}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>KM percorrido:</label>
+            <input type="number" id="km-${user.id}" step="0.1" placeholder="Ex: 12.5">
+          </div>
+          <div class="form-group">
+            <label>Minutos percorridos:</label>
+            <input type="number" id="mins-${user.id}" placeholder="Ex: 45">
+          </div>
+          <div class="form-group">
+            <label>Peso atual da semana (kg):</label>
+            <input type="number" id="weight-${user.id}" step="0.1" placeholder="Ex: 84.2">
+          </div>
+          <button class="btn-save" onclick="saveData(${user.id})">Salvar Registro</button>
+        </div>
+
+        <!-- MENU OCULTO: Editar Perfil -->
+        <div class="collapsible-menu" id="edit-menu-${user.id}">
+          <div class="menu-title">Editar Dados Pessoais</div>
+          <div class="form-group">
+            <label>Nome Completo:</label>
+            <input type="text" id="edit-name-${user.id}" value="${user.name}">
+          </div>
+          <div class="form-group">
+            <label>Idade:</label>
+            <input type="number" id="edit-age-${user.id}" value="${user.age}">
+          </div>
+          <div class="form-group">
+            <label>Peso Inicial (kg):</label>
+            <input type="number" id="edit-initweight-${user.id}" step="0.1" value="${user.initialWeight}">
+          </div>
+          <div class="form-group">
+            <label>Foto de Perfil (Enviar arquivo):</label>
+            <input type="file" id="edit-img-file-${user.id}" accept="image/*" onchange="previewLocalImage(this, ${user.id})">
+            <img src="" id="profile-preview-${user.id}" class="profile-pic-preview">
+          </div>
+          <button class="btn-save" style="background:#8e44ad;" onclick="saveProfile(${user.id})">Atualizar Perfil</button>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="stats-container">
+          <div class="total-meta"><strong>Total Acumulado:</strong> ${totals.totalKm.toFixed(1)} km | ${totals.hours}h ${totals.remainingMins}m</div>
+          
+          <div class="weekly-breakdown">
+            <h4>Detalhamento por Semana (KM | Tempo | Peso)</h4>
+            ${weeklyHTML}
+          </div>
+
+          <div class="chart-box">
+            <canvas id="chart-${user.id}"></canvas>
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+      
+      setTimeout(() => {
+        loadWeekData(user.id);
+        renderChart(user);
+      }, 0);
+    });
+  }
+
+  function toggleMenu(menuId) {
+    const el = document.getElementById(menuId);
+    const isShowing = el.classList.contains('show');
+    
+    const parentCard = el.closest('.card');
+    parentCard.querySelectorAll('.collapsible-menu').forEach(m => m.classList.remove('show'));
+
+    if (!isShowing) el.classList.add('show');
+  }
+
+  function loadWeekData(userId) {
+    const week = document.getElementById(`week-select-${userId}`).value;
+    const user = users.find(u => u.id === userId);
+    const weekData = user.weeks[week] || { km: '', mins: '', weight: '' };
+
+    document.getElementById(`km-${userId}`).value = weekData.km;
+    document.getElementById(`mins-${userId}`).value = weekData.mins;
+    document.getElementById(`weight-${userId}`).value = weekData.weight;
+  }
+
+  function saveData(userId) {
+    const week = document.getElementById(`week-select-${userId}`).value;
+    const km = document.getElementById(`km-${userId}`).value;
+    const mins = document.getElementById(`mins-${userId}`).value;
+    const weight = document.getElementById(`weight-${userId}`).value;
+
+    const user = users.find(u => u.id === userId);
+    
+    user.weeks[week] = {
+      km: parseFloat(km) || 0,
+      mins: parseInt(mins) || 0,
+      weight: parseFloat(weight) || (user.weeks[week]?.weight || user.initialWeight)
+    };
+
+    saveToStorage();
+  }
+
+  let tempImageData = {}; 
+
+  function previewLocalImage(input, userId) {
+    const preview = document.getElementById(`profile-preview-${userId}`);
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    if (file) {
+      if (file.size > 1024 * 1024) {
+         alert("A imagem é muito grande. Escolha uma foto com menos de 1MB.");
+         input.value = "";
+         return;
+      }
+
+      reader.onloadend = function() {
+        preview.src = reader.result;
+        preview.style.display = 'block';
+        tempImageData[userId] = reader.result;
+      }
+      reader.readAsDataURL(file);
+    } else {
+      preview.src = "";
+      preview.style.display = 'none';
+      tempImageData[userId] = null;
+    }
+  }
+
+  function saveProfile(userId) {
+    const user = users.find(u => u.id === userId);
+    user.name = document.getElementById(`edit-name-${userId}`).value;
+    user.age = parseInt(document.getElementById(`edit-age-${userId}`).value) || user.age;
+    user.initialWeight = parseFloat(document.getElementById(`edit-initweight-${userId}`).value) || user.initialWeight;
+    
+    if (tempImageData[userId]) {
+      user.img = tempImageData[userId];
+      tempImageData[userId] = null;
+    }
+
+    saveToStorage();
+  }
+
+  function saveToStorage() {
+    try {
+        localStorage.setItem('challenge_users_db_v3', JSON.stringify(users));
+        renderRanking();
+        renderParticipants();
+    } catch (e) {
+        alert("Ocorreu um erro ao salvar os dados. Espaço do navegador cheio.");
+        console.error("Erro no LocalStorage:", e);
+    }
+  }
+
+  function addNewWeek(userId) {
+    const select = document.getElementById(`week-select-${userId}`);
+    const nextWeek = select.options.length + 1;
+    
+    const newOption = document.createElement('option');
+    newOption.value = nextWeek;
+    newOption.text = `Semana ${nextWeek}`;
+    select.appendChild(newOption);
+    
+    select.value = nextWeek;
+    loadWeekData(userId);
+  }
+
+  function renderChart(user) {
+    const ctx = document.getElementById(`chart-${user.id}`);
+    if(!ctx) return;
+
+    if (charts[user.id]) {
+      charts[user.id].destroy();
+    }
+
+    const weekNumbers = Object.keys(user.weeks).map(Number);
+    const totalWeeks = Math.max(4, ...weekNumbers, 0);
+
+    const labels = ['Inicial'];
+    const weights = [user.initialWeight];
+
+    for (let w = 1; w <= totalWeeks; w++) {
+      labels.push(`Sem ${w}`);
+      weights.push(user.weeks[w]?.weight || null);
+    }
+
+    charts[user.id] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Evolução de Peso (kg)',
+          data: weights,
+          borderColor: '#e74c3c',
+          backgroundColor: 'rgba(231, 76, 60, 0.05)',
+          fill: true,
+          tension: 0.3,
+          spanGaps: true,
+          borderWidth: 3,
+          pointBackgroundColor: '#e74c3c',
+          pointRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: false, grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 } } },
+          x: { grid: { display: false }, ticks: { font: { size: 10, weight: '700' }, color: '#7f8c8d' } }
+        }
+      }
+    });
+  }
+
+  // === FUNÇÕES DE BACKUP (EXPORTAR / IMPORTAR) ===
+
+  function exportBackup() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(users, null, 2));
+    const downloadAnchor = document.createElement('a');
+    const today = new Date().toISOString().slice(0,10);
+    
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `backup_desafio_${today}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  }
+
+  function importBackup(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const importedUsers = JSON.parse(e.target.result);
+        if (Array.isArray(importedUsers)) {
+          users = importedUsers;
+          saveToStorage();
+          alert("Backup restaurado com sucesso!");
+        } else {
+          alert("Arquivo de backup inválido.");
+        }
+      } catch (err) {
+        alert("Erro ao ler o arquivo de backup. Certifique-se de que é um arquivo .json válido.");
+      }
+    };
+    reader.readAsText(file);
+    input.value = ''; // Reseta input file
+  }
+
+  // Inicialização
+  renderRanking();
+  renderParticipants();
+</script>
+
+</body>
+</html>
